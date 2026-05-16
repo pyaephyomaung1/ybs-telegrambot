@@ -102,7 +102,7 @@ export const stops: StopSeed[] = [
   { id: 21, name: 'မင်္ဂလာဈေး', townshipId: 11 },
   { id: 22, name: 'သိမ်ဖြူ', townshipId: 1 },
   { id: 23, name: 'လှည်းတန်း', townshipId: 43 },
-
+  { id: 24, name: 'စံရိပ်ငြိမ်', townshipId: 43 },
   { id: 25, name: 'ဗဟိုလမ်း', townshipId: 19 },
   { id: 26, name: 'အင်းစိန်ဥယျာဉ်', townshipId: 19 },
   { id: 27, name: 'YTU', townshipId: 19 },
