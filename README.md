@@ -1,98 +1,107 @@
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="public/image/logo.png" alt="YBS Helper Bot Logo" width="120" height="120" style="border-radius: 50%" />
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+<h1 align="center">🚌 YBS Helper Bot</h1>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+<p align="center">
+  A Telegram bot for searching Yangon Bus Service (YBS) routes and stops easily.
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+<p align="center">
+  <a href="https://t.me/yangonbusbot">
+    <img src="https://img.shields.io/badge/Telegram-@yangonbusbot-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Bot" />
+  </a>
+  <img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+</p>
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## 📖 About
 
-```bash
-$ npm install
-```
+**YBS Helper Bot** is a Telegram chatbot that helps Yangon commuters search for bus routes and stops quickly — without needing to browse websites or ask around.
 
-## Compile and run the project
+Built as a school project by **Pyae Phyo Maung**, with data entry support from **Min Kaung Han** and **Aung Zay Ya**.
 
-```bash
-# development
-$ npm run start
+> ရန်ကုန်ယာဥ်လိုင်းများနှင့် မှတ်တိုင်များကို လွယ်ကူစွာ ရှာဖွေနိုင်သည်။
 
-# watch mode
-$ npm run start:dev
+---
 
-# production mode
-$ npm run start:prod
-```
+## ✨ Features
 
-## Run tests
+- 🚌 **Search by Bus Line** — Enter a bus number and get all stops in order
+- 🚏 **Search by Stop Name** — Enter a stop name and see which buses pass through
+- 🏙️ **Township disambiguation** — If the same stop name exists in multiple townships, the bot asks you to pick the right one
+- 💬 **Burmese language support** — Responses in Myanmar language
+- 🗄️ **Persistent sessions** — Conversation state stored in PostgreSQL
 
-```bash
-# unit tests
-$ npm run test
+---
 
-# e2e tests
-$ npm run test:e2e
+## 📱 How to Use
 
-# test coverage
-$ npm run test:cov
-```
+### 1. Start the Bot
 
-## Deployment
+Open [@yangonbusbot](https://t.me/yangonbusbot) on Telegram and press **Start**.
+The bot will greet you with the main menu.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+<p align="center">
+  <img src="public/image/screenshot-1.webp" alt="YBS Bot Home Screen" width="320" />
+</p>
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+---
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+### 2. Search by Bus Line Number
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Tap **"🚌 ယာဥ်လိုင်းနံပါတ်ဖြင့် ရှာရန်"**, then type a bus number (e.g. `4`, `7`, `43`).
+The bot returns all stops for that route in order.
 
-## Resources
+<p align="center">
+  <img src="public/image/screenshot-3.webp" alt="Search by Bus Number" width="320" />
+</p>
 
-Check out a few resources that may come in handy when working with NestJS:
+---
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### 3. Search by Stop Name
 
-## Support
+Tap **"🚏 မှတ်တိုင်ဖြင့်ရှာရန်"**, then type a stop name.
+The bot shows all bus lines that pass through that stop.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+If the same stop name exists in multiple townships, the bot will ask you to choose the correct one.
 
-## Stay in touch
+<p align="center">
+  <img src="public/image/screenshot-3.webp" alt="Search by Stop Name" width="320" />
+</p>
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
 
-## License
+---
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## 🏗️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js |
+| Framework | NestJS + TypeScript |
+| Database | Seeding + TypeORM |
+| Messaging | Telegram Bot API |
+| Architecture | Webhook-based, State Machine pattern |
+
+---
+
+
+## 👥 Credits
+
+| Role | Name |
+|---|---|
+| 👨‍💻 Developer | [Pyae Phyo Maung](https://github.com/pyaephyomaung1) |
+| 📊 Data Entry | Min Kaung Han |
+| 📊 Data Entry | Aung Zay Ya |
+
+---
+
+## 📦 Source Code
+
+[github.com/pyaephyomaung1/ybs-telegrambot](https://github.com/pyaephyomaung1/ybs-telegrambot)
+
+---
