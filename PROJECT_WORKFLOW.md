@@ -4,14 +4,14 @@ This project is a NestJS Telegram bot. Its job is simple:
 
 1. Receive a message from Telegram.
 2. Remember what the user is trying to do.
-3. Query bus data from PostgreSQL.
+3. Query bus data from local TypeScript seed data.
 4. Send a useful reply back to Telegram.
 
 The project uses three main NestJS feature areas:
 
 - `TelegramModule`: receives Telegram webhook messages and controls the chat flow.
-- `BusModule`: reads bus, stop, township, and route data from the database.
-- `SessionModule`: remembers each Telegram user's current conversation state.
+- `BusModule`: reads bus, stop, township, and route data from `src/seed.ts`.
+- `SessionModule`: remembers each Telegram user's current conversation state in memory.
 
 ## Big Picture
 
@@ -22,8 +22,8 @@ The app starts in `main.ts`.
 `AppModule` is the root module. It wires together:
 
 - `ConfigModule` for environment variables.
-- `TypeOrmModule` for PostgreSQL connection.
-- the entity classes used by TypeORM.
+- `ConfigModule` for environment variables, such as the Telegram bot token.
+- local seed data from `src/seed.ts` for bus routes.
 - the app feature modules: Telegram, Bus, and Session.
 
 So the high-level runtime flow is:
@@ -38,7 +38,7 @@ Telegram -> POST /telegram/webhook -> TelegramController -> TelegramService
                          TelegramHandler performs the bot action
                                                      |
                                                      v
-                                  BusService queries PostgreSQL
+                                  BusService queries src/seed.ts
                                                      |
                                                      v
                               TelegramKeyboard sends Telegram reply
@@ -46,7 +46,9 @@ Telegram -> POST /telegram/webhook -> TelegramController -> TelegramService
 
 ## Database Entities
 
-Entities are TypeORM classes. They describe database tables and relationships.
+Entities are TypeScript classes that describe the shape of the app's data.
+
+Earlier versions of this project used TypeORM/PostgreSQL. The current version uses local seed data instead, but the entity classes are still useful as shared data shapes for the rest of the code.
 
 ### `Township`
 
@@ -109,7 +111,7 @@ BusLine 1 -> many BusLineStop
 
 File: `src/entities/bus-line-stop.entity.ts`
 
-This is the join table between bus lines and stops.
+This is the join structure between bus lines and stops.
 
 It exists because:
 
@@ -138,7 +140,7 @@ Bus 43
 3. Stop C
 ```
 
-Each row in `bus_line_stops` stores one stop for one bus line with its order.
+Each item in `busLineStops` stores one stop for one bus line with its order.
 
 ### `Session`
 
@@ -232,7 +234,7 @@ Step by step:
 2. Call `telegramService.handleUpdate(body)`.
 3. Return `{ ok: true }`.
 
-It does not parse commands or query the database. That is good NestJS style: controllers receive requests, services handle behavior.
+It does not parse commands or query route data. That is good NestJS style: controllers receive requests, services handle behavior.
 
 ## `TelegramService`
 
@@ -484,7 +486,9 @@ Telegram clients show a loading spinner after an inline button is clicked. Calli
 
 File: `src/bus/bus.service.ts`
 
-This service owns bus-related database queries.
+This service owns bus-related lookups.
+
+It reads from `src/seed.ts`, not from a database. That makes the bot easier to run while learning NestJS: edit the seed arrays, restart the app, and the bot uses the new data.
 
 ### `getStopsByBusNumber(busNumber)`
 
@@ -512,9 +516,9 @@ Searches stops by partial name.
 
 Step by step:
 
-1. Start a query on the `Stop` table.
+1. Search the `stops` array.
 2. Join the related township.
-3. Use PostgreSQL `ILIKE` for case-insensitive partial matching.
+3. Use case-insensitive partial matching in memory.
 4. Return all matching stops.
 
 Used by:
@@ -593,7 +597,7 @@ Bot: Enter bus line number
 Session state: WAITING_BUS_NUMBER
 
 User: 43
-Bot: queries route stops for bus 43
+Bot: looks up route stops for bus 43 from `src/seed.ts`
 Bot: sends ordered stop list
 Session state: IDLE
 Bot: shows menu
@@ -639,7 +643,7 @@ This user clicked "Search by Bus Line" or "ယာဥ်လိုင်းနံ�
 The next message should be treated as a bus number.
 ```
 
-That is what the `sessions` table does.
+That is what `SessionService` does with its in-memory session map.
 
 Without session state, the bot would not know the difference between:
 
@@ -688,7 +692,7 @@ Example:
 TelegramService routes incoming Telegram updates.
 TelegramHandler decides what reply/action to perform.
 TelegramKeyboard sends Telegram messages and keyboards.
-BusService queries bus data.
+BusService queries seed data.
 SessionService stores chat state.
 ```
 
@@ -707,25 +711,32 @@ constructor(
 
 This means `TelegramService` does not manually create `SessionService` or `TelegramHandler`. Nest creates and injects them.
 
-### Repository
+### Seed Data
 
-TypeORM repositories are used to read and write database tables.
+Seed data is stored in `src/seed.ts`.
 
-Example:
+It contains plain TypeScript arrays:
 
-```ts
-@InjectRepository(Session)
-private readonly sessionRepo: Repository<Session>
+- `townships`
+- `busLines`
+- `stops`
+- `busLineStops`
+
+To add new route data, edit those arrays. The important relationship is:
+
+```text
+busLineStops connects busLines and stops
 ```
 
-This gives `SessionService` access to the `sessions` table.
+That is how the app knows which stops belong to which bus line, and in what order.
 
 ## Things To Improve Later
 
 This project is good for learning, but a production bot would usually improve these areas:
 
-- Replace `synchronize: true` with migrations.
-- Add real seed data for townships, stops, and bus routes.
+- Move from in-memory seed data to a database when the dataset becomes large.
+- Persist sessions if you need conversation state to survive app restarts.
+- Add more complete seed data for townships, stops, and bus routes.
 - Add stronger tests for Telegram conversation flows.
 - Validate required environment variables on startup.
 - Move Telegram API calls into a small client class.

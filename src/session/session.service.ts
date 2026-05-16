@@ -1,43 +1,47 @@
 // src/session/session.service.ts
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Session, SessionStopChoice } from '../entities/session.entity';
 
 @Injectable()
 export class SessionService {
-  constructor(
-    @InjectRepository(Session)
-    private readonly sessionRepo: Repository<Session>,
-  ) {}
+  private readonly sessions = new Map<number, Session>();
+  private nextId = 1;
 
   // Get existing session or create a fresh one
-  async getOrCreate(telegramId: number): Promise<Session> {
-    let session = await this.sessionRepo.findOne({ where: { telegramId } });
+  getOrCreate(telegramId: number): Promise<Session> {
+    return Promise.resolve(this.getOrCreateSession(telegramId));
+  }
+
+  setState(telegramId: number, state: string): Promise<void> {
+    const session = this.getOrCreateSession(telegramId);
+    session.state = state;
+    session.tempData = null;
+    session.updatedAt = new Date();
+
+    return Promise.resolve();
+  }
+
+  setTempData(telegramId: number, data: SessionStopChoice[]): Promise<void> {
+    const session = this.getOrCreateSession(telegramId);
+    session.tempData = data;
+    session.updatedAt = new Date();
+
+    return Promise.resolve();
+  }
+
+  private getOrCreateSession(telegramId: number): Session {
+    let session = this.sessions.get(telegramId);
     if (!session) {
-      session = this.sessionRepo.create({
+      session = {
+        id: this.nextId,
         telegramId,
         state: 'IDLE',
         tempData: null,
-      });
-      await this.sessionRepo.save(session);
+        updatedAt: new Date(),
+      };
+      this.nextId += 1;
+      this.sessions.set(telegramId, session);
     }
     return session;
-  }
-
-  async setState(telegramId: number, state: string): Promise<void> {
-    await this.sessionRepo.update(
-      { telegramId },
-      { state, tempData: () => 'NULL' },
-    );
-  }
-
-  async setTempData(
-    telegramId: number,
-    data: SessionStopChoice[],
-  ): Promise<void> {
-    const session = await this.getOrCreate(telegramId);
-    session.tempData = data;
-    await this.sessionRepo.save(session);
   }
 }

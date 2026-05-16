@@ -1,26 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Session } from '../entities/session.entity';
 import { SessionService } from './session.service';
 
 describe('SessionService', () => {
   let service: SessionService;
-  const sessionRepo = {
-    create: jest.fn(),
-    findOne: jest.fn(),
-    save: jest.fn(),
-    update: jest.fn(),
-  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SessionService,
-        {
-          provide: getRepositoryToken(Session),
-          useValue: sessionRepo,
-        },
-      ],
+      providers: [SessionService],
     }).compile();
 
     service = module.get<SessionService>(SessionService);
@@ -28,5 +14,17 @@ describe('SessionService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('creates and updates an in-memory session', async () => {
+    const session = await service.getOrCreate(123);
+
+    expect(session.state).toBe('IDLE');
+
+    await service.setState(123, 'WAITING_BUS_NUMBER');
+    const updatedSession = await service.getOrCreate(123);
+
+    expect(updatedSession.state).toBe('WAITING_BUS_NUMBER');
+    expect(updatedSession.tempData).toBeNull();
   });
 });
