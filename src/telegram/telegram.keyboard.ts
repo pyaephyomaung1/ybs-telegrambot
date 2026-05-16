@@ -52,7 +52,7 @@ export class TelegramKeyboard {
   async showMainMenu(chatId: number) {
     await this.sendMessage(
       chatId,
-      '🚌 YBS Bot — Yangon Bus Service\n\nWhat would you like to search?',
+      '🚌 မင်္ဂလာပါ YBS Bot — ဝိုင်ဘီအက်စ်ဘော့တ် မှ ကြိုဆိုပါတယ်\n\nဘာများရှာချင်ပါသလဲ?',
       {
         keyboard: [
           [TELEGRAM_KEYBOARD_TEXT.searchByBusLine],

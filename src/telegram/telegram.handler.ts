@@ -33,7 +33,7 @@ export class TelegramHandler {
     if (!stops || stops.length === 0) {
       await this.keyboard.sendMessage(
         chatId,
-        `❌ Bus line "${text}" not found. Try again:`,
+        `❌ တောင်းပန်ပါတယ် ယာဥ်လိုင်းနံပါတ် "${text}" ရှာမတွေ့ပါ.`,
       );
       return;
     }
@@ -44,7 +44,7 @@ export class TelegramHandler {
 
     await this.keyboard.sendMessage(
       chatId,
-      `🚌 Bus ${text} stops:\n\n${stopList}`,
+      `🚌 ယာလိုင်းနံပါတ် ${text} ရောက်ရှိသော မှတ်တိုင်များ:\n\n${stopList}`,
     );
     await this.sessionService.setState(telegramId, 'IDLE');
     await this.keyboard.showMainMenu(chatId);
@@ -56,7 +56,7 @@ export class TelegramHandler {
     if (!stops || stops.length === 0) {
       await this.keyboard.sendMessage(
         chatId,
-        `❌ No stops found for "${text}". Try again:`,
+        `❌"${text}" မှတ်တိုင်ရှာမတွေ့ပါ ထပ်မံကြိုးစားပါ`,
       );
       return;
     }
@@ -124,16 +124,16 @@ export class TelegramHandler {
     if (!buses || buses.length === 0) {
       await this.keyboard.sendMessage(
         chatId,
-        `❌ No buses found for stop "${stop.name}".`,
+        `❌ တောင်းပန်ပါတယ် မှတ်တိုင်ရှာမတွေ့ပါ`,
       );
     } else {
       const busList = buses
-        .map((b) => `• Bus ${b.busLine.number} — ${b.busLine.description}`)
+        .map((b) => `• ယာဥ်လိုင်းနံပါတ် ${b.busLine.number} — ${b.busLine.description}`)
         .join('\n');
 
       await this.keyboard.sendMessage(
         chatId,
-        `🚏 Buses passing ${stop.name} (${stop.township.name}):\n\n${busList}`,
+        `🚏 ${stop.name} (${stop.township.name}) သို့ ရောက်တော့ ယာဥ်နံပါတ်များ :\n\n${busList}`,
       );
     }
 
