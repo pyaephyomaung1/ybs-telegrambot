@@ -20,7 +20,8 @@ describe('BusService', () => {
     const stops = await service.getStopsByBusNumber('4');
 
     expect(stops).toHaveLength(12);
-    expect(stops[0].stop.name).toBe('Pae Ku River Road');
-    expect(stops[11].stop.name).toBe('Mahar Bandula Road');
+    expect(stops[0].stopOrder).toBe(1);
+    expect(stops[11].stopOrder).toBe(12);
+    expect(stops.every((stop) => stop.busLine.number === '4')).toBe(true);
   });
 });

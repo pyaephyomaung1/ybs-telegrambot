@@ -21,6 +21,15 @@ describe('TelegramService', () => {
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    sessionService.getOrCreate.mockResolvedValue({
+      id: 1,
+      telegramId: 123,
+      state: 'IDLE',
+      tempData: null,
+      updatedAt: new Date(),
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TelegramService,
@@ -40,5 +49,35 @@ describe('TelegramService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('routes typed numbers to bus line search', async () => {
+    await service.handleUpdate({
+      message: {
+        text: '43',
+        from: { id: 123 },
+        chat: { id: 456 },
+      },
+    });
+
+    expect(handler.handleBusNumberInput).toHaveBeenCalledWith(456, 123, '43');
+    expect(handler.handleStopNameInput).not.toHaveBeenCalled();
+  });
+
+  it('routes typed strings to stop quick search', async () => {
+    await service.handleUpdate({
+      message: {
+        text: 'လှည်းတန်း',
+        from: { id: 123 },
+        chat: { id: 456 },
+      },
+    });
+
+    expect(handler.handleStopNameInput).toHaveBeenCalledWith(
+      456,
+      123,
+      'လှည်းတန်း',
+    );
+    expect(handler.handleBusNumberInput).not.toHaveBeenCalled();
   });
 });

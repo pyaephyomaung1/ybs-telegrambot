@@ -259,7 +259,10 @@ Step by step:
    - message text
 5. Load or create the user's session.
 6. Check whether the message is a navigation command.
-7. If not, route the message based on the user's current session state.
+7. If the bot is waiting for a stop choice, treat the message as a numbered choice.
+8. Otherwise, run quick search:
+   - numeric text searches bus lines
+   - non-numeric text searches stops
 
 This function is the traffic controller for the bot.
 
@@ -300,6 +303,27 @@ Step by step:
 2. If the user chooses bus-line search, set state to `WAITING_BUS_NUMBER`.
 3. If the user chooses stop-name search, set state to `WAITING_STOP_NAME`.
 4. Remove any old input-box keyboard when asking for typed input.
+
+### `handleQuickSearch(chatId, telegramId, text)`
+
+Handles normal typing in the input box.
+
+Step by step:
+
+1. If the text is only digits, treat it as a bus line number.
+2. Call `TelegramHandler.handleBusNumberInput(...)`.
+3. If the text is not only digits, treat it as a stop-name search.
+4. Call `TelegramHandler.handleStopNameInput(...)`.
+
+This means the user can type directly without clicking the menu first:
+
+```text
+User: 43
+Bot: shows Bus 43 stops
+
+User: လှည်းတန်း
+Bot: searches matching stops
+```
 
 ### `isTelegramTextUpdate(body)`
 
@@ -603,6 +627,14 @@ Session state: IDLE
 Bot: shows menu
 ```
 
+The user can also skip the menu:
+
+```text
+User: 43
+Bot: queries route stops for bus 43
+Bot: sends ordered stop list
+```
+
 ### Search By Stop Name
 
 ```text
@@ -611,6 +643,13 @@ Bot: Enter stop name
 Session state: WAITING_STOP_NAME
 
 User: Hledan
+Bot: searches matching stops
+```
+
+The user can also type a stop name directly:
+
+```text
+User: လှည်းတန်း
 Bot: searches matching stops
 ```
 

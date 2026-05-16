@@ -58,28 +58,17 @@ export class TelegramService {
     // Handle navigation commands first (always works regardless of state)
     if (await this.handleNavigation(chatId, telegramId, text)) return;
 
-    switch (session.state) {
-      case 'IDLE':
-        await this.handler.handleIdle(chatId);
-        break;
-      case 'WAITING_BUS_NUMBER':
-        await this.handler.handleBusNumberInput(chatId, telegramId, text);
-        break;
-      case 'WAITING_STOP_NAME':
-        await this.handler.handleStopNameInput(chatId, telegramId, text);
-        break;
-      case 'WAITING_STOP_CHOICE':
-        await this.handler.handleStopChoice(
-          chatId,
-          telegramId,
-          text,
-          session.tempData,
-        );
-        break;
-      default:
-        await this.sessionService.setState(telegramId, 'IDLE');
-        await this.handler.handleIdle(chatId);
+    if (session.state === 'WAITING_STOP_CHOICE') {
+      await this.handler.handleStopChoice(
+        chatId,
+        telegramId,
+        text,
+        session.tempData,
+      );
+      return;
     }
+
+    await this.handleQuickSearch(chatId, telegramId, text);
   }
 
   private async handleCallbackUpdate(
@@ -135,6 +124,23 @@ export class TelegramService {
     }
 
     return false;
+  }
+
+  private async handleQuickSearch(
+    chatId: number,
+    telegramId: number,
+    text: string,
+  ): Promise<void> {
+    if (this.isBusNumberInput(text)) {
+      await this.handler.handleBusNumberInput(chatId, telegramId, text);
+      return;
+    }
+
+    await this.handler.handleStopNameInput(chatId, telegramId, text);
+  }
+
+  private isBusNumberInput(text: string): boolean {
+    return /^\d+$/.test(text);
   }
 
   private isTelegramTextUpdate(body: unknown): body is TelegramTextUpdate {
