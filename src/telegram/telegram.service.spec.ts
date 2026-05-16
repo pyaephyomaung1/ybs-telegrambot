@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BusService } from '../bus/bus.service';
 import { SessionService } from '../session/session.service';
+import { TelegramHandler } from './telegram.handler';
 import { TelegramService } from './telegram.service';
 
 describe('TelegramService', () => {
@@ -10,10 +10,13 @@ describe('TelegramService', () => {
     setState: jest.fn(),
     setTempData: jest.fn(),
   };
-  const busService = {
-    getBusesByStop: jest.fn(),
-    getStopsByBusNumber: jest.fn(),
-    searchStops: jest.fn(),
+  const handler = {
+    askForBusNumber: jest.fn(),
+    askForStopName: jest.fn(),
+    handleBusNumberInput: jest.fn(),
+    handleIdle: jest.fn(),
+    handleStopChoice: jest.fn(),
+    handleStopNameInput: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -25,8 +28,8 @@ describe('TelegramService', () => {
           useValue: sessionService,
         },
         {
-          provide: BusService,
-          useValue: busService,
+          provide: TelegramHandler,
+          useValue: handler,
         },
       ],
     }).compile();
