@@ -10,17 +10,32 @@ export const TELEGRAM_KEYBOARD_TEXT = {
   oldSearchByStopName: '🚏 Search by Stop Name',
 } as const;
 
+export const TELEGRAM_CALLBACK_DATA = {
+  searchByBusLine: 'SEARCH_BY_BUS_LINE',
+  searchByStopName: 'SEARCH_BY_STOP_NAME',
+} as const;
+
 interface TelegramReplyMarkup {
   keyboard: string[][];
   resize_keyboard: boolean;
   one_time_keyboard: boolean;
 }
 
+interface TelegramInlineMarkup {
+  inline_keyboard: {
+    text: string;
+    callback_data: string;
+  }[][];
+}
+
 interface TelegramRemoveKeyboard {
   remove_keyboard: true;
 }
 
-type TelegramMessageMarkup = TelegramReplyMarkup | TelegramRemoveKeyboard;
+type TelegramMessageMarkup =
+  | TelegramReplyMarkup
+  | TelegramInlineMarkup
+  | TelegramRemoveKeyboard;
 
 @Injectable()
 export class TelegramKeyboard {
@@ -54,18 +69,43 @@ export class TelegramKeyboard {
       chatId,
       '🚌 မင်္ဂလာပါ YBS Bot — ဝိုင်ဘီအက်စ်ဘော့တ် မှ ကြိုဆိုပါတယ်\n\nဘာများရှာချင်ပါသလဲ?',
       {
-        keyboard: [
-          [TELEGRAM_KEYBOARD_TEXT.searchByBusLine],
-          [TELEGRAM_KEYBOARD_TEXT.searchByStopName],
+        inline_keyboard: [
+          [
+            {
+              text: TELEGRAM_KEYBOARD_TEXT.searchByBusLine,
+              callback_data: TELEGRAM_CALLBACK_DATA.searchByBusLine,
+            },
+          ],
+          [
+            {
+              text: TELEGRAM_KEYBOARD_TEXT.searchByStopName,
+              callback_data: TELEGRAM_CALLBACK_DATA.searchByStopName,
+            },
+          ],
         ],
-        resize_keyboard: true,
-        one_time_keyboard: false,
       },
+    );
+
+    await this.removeKeyboard(
+      chatId,
+      'ရွေးချယ်ရန် အပေါ်က ခလုတ်များကို နှိပ်ပါ။',
     );
   }
 
   async removeKeyboard(chatId: number, text: string) {
     await this.sendMessage(chatId, text, { remove_keyboard: true });
+  }
+
+  async answerCallbackQuery(callbackQueryId: string) {
+    try {
+      await axios.post(`${this.apiUrl}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to answer Telegram callback query: ${this.getError(error)}`,
+      );
+    }
   }
 
   private getError(error: unknown): string {

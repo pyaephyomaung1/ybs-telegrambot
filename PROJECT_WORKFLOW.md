@@ -32,13 +32,16 @@ So the high-level runtime flow is:
 Telegram -> POST /telegram/webhook -> TelegramController -> TelegramService
                                                      |
                                                      v
-                             SessionService remembers user state
+                               TelegramService routes the message
+                                                     |
+                                                     v
+                         TelegramHandler performs the bot action
                                                      |
                                                      v
                                   BusService queries PostgreSQL
                                                      |
                                                      v
-                                  TelegramService sends reply
+                              TelegramKeyboard sends Telegram reply
 ```
 
 ## Database Entities
@@ -182,7 +185,7 @@ File: `src/session/session.module.ts`
 
 Registers the `Session` repository and provides `SessionService`.
 
-It exports `SessionService` so `TelegramService` can remember each user's state.
+It exports `SessionService` so Telegram code can remember each user's state.
 
 ### `TelegramModule`
 
@@ -195,7 +198,15 @@ It imports:
 - `SessionModule`
 - `BusModule`
 
-That gives `TelegramService` access to both `SessionService` and `BusService`.
+That gives the Telegram providers access to conversation state and bus lookup logic.
+
+In the current structure, Telegram work is split into three providers:
+
+- `TelegramService`: receives updates, checks navigation commands, and routes by session state.
+- `TelegramHandler`: performs the actual bot actions, such as searching bus lines or stops.
+- `TelegramKeyboard`: sends messages and shows/removes Telegram keyboard buttons.
+
+This split is useful because each class has a smaller job.
 
 ## Services
 
@@ -227,7 +238,9 @@ It does not parse commands or query the database. That is good NestJS style: con
 
 File: `src/telegram/telegram.service.ts`
 
-This is the main brain of the bot.
+This service is the router for Telegram updates.
+
+It does not directly query bus data and it does not directly call the Telegram API anymore. Instead, it decides what should happen next and delegates the action to `TelegramHandler`.
 
 ### `handleUpdate(body)`
 
@@ -235,46 +248,102 @@ Entry point for every Telegram update.
 
 Step by step:
 
-1. Check whether the update is a text message.
-2. Extract:
+1. Check whether the update is an inline button callback.
+2. If it is a callback, route it to `handleCallbackUpdate(...)`.
+3. If not, check whether the update is a text message.
+4. Extract:
    - Telegram user id
    - chat id
    - message text
-3. Load or create the user's session.
-4. Check whether the message is a navigation command.
-5. If not, route the message based on the user's current session state.
+5. Load or create the user's session.
+6. Check whether the message is a navigation command.
+7. If not, route the message based on the user's current session state.
 
 This function is the traffic controller for the bot.
 
-### `handleNavigationCommand(chatId, telegramId, text)`
+### `handleCallbackUpdate(body)`
+
+Handles inline button clicks from the menu message.
+
+Inline buttons do not send normal text messages. Telegram sends a `callback_query` update instead. That is why this project has separate callback handling.
+
+Step by step:
+
+1. Extract the Telegram user id, chat id, callback id, and callback data.
+2. Create the user's session if needed.
+3. Answer the callback query so Telegram stops showing the loading spinner.
+4. If the user clicked bus-line search, set state to `WAITING_BUS_NUMBER`.
+5. If the user clicked stop-name search, set state to `WAITING_STOP_NAME`.
+6. Ask the user to type the next input.
+
+### `handleNavigation(chatId, telegramId, text)`
 
 Handles commands/buttons that should work from anywhere.
 
 Examples:
 
 - `/start`
-- `🔙 Main Menu`
-- `🚌 Search by Bus Line`
-- `🚏 Search by Stop Name`
+- `🔙 ပင်မစာမျက်နှာပြန်သွားရန်`
+- `🚌 ယာဥ်လိုင်းနံပါတ်ဖြင့် ရှာရန်`
+- `🚏 မှတ်တိုင်ဖြင့်ရှာရန်`
+- old English keyboard labels, for compatibility with older Telegram clients
 
 This function prevents a common bot bug: treating button text as normal user input.
 
-For example, if the bot is waiting for a bus number and the user taps `🚌 Search by Bus Line` again, the bot should restart that flow instead of searching for a bus named `"🚌 Search by Bus Line"`.
+For example, if the bot is waiting for a bus number and the user taps the bus-line search button again, the bot should restart that flow instead of searching for a bus whose number is the button text.
 
 Step by step:
 
 1. If the user asks for the main menu, reset state to `IDLE` and show the menu.
 2. If the user chooses bus-line search, set state to `WAITING_BUS_NUMBER`.
 3. If the user chooses stop-name search, set state to `WAITING_STOP_NAME`.
-4. Remove the Telegram keyboard when asking for typed input.
+4. Remove any old input-box keyboard when asking for typed input.
+
+### `isTelegramTextUpdate(body)`
+
+Checks that the incoming Telegram payload is actually a text message before the bot tries to read `message.text`, `message.from.id`, or `message.chat.id`.
+
+This is a TypeScript type guard. It protects the app from non-text Telegram updates, such as stickers and photos.
+
+### `isTelegramCallbackUpdate(body)`
+
+Checks that the incoming Telegram payload is an inline button callback before the bot tries to read `callback_query.data`.
+
+This lets the bot support buttons under the message.
+
+## `TelegramHandler`
+
+File: `src/telegram/telegram.handler.ts`
+
+This class contains the bot conversation actions.
+
+If `TelegramService` answers "which branch of the conversation are we in?", then `TelegramHandler` answers "what do we do for that branch?"
 
 ### `handleIdle(chatId)`
 
 Runs when the user has no active task.
 
-Right now it simply shows the main menu.
+It shows the main menu by calling `TelegramKeyboard.showMainMenu(chatId)`.
 
 This is the default safe behavior: if the bot does not know what the user wants, show options.
+
+### `askForBusNumber(chatId)`
+
+Runs when the user chooses bus-line search.
+
+Step by step:
+
+1. Send a Burmese prompt asking for the bus line number.
+2. Remove any old input-box keyboard so the user types a real bus number.
+
+### `askForStopName(chatId)`
+
+Runs when the user chooses stop-name search.
+
+Step by step:
+
+1. Send a Burmese prompt asking for the stop name.
+2. Remove any old input-box keyboard so the user types a real stop name.
 
 ### `handleBusNumberInput(chatId, telegramId, text)`
 
@@ -283,7 +352,7 @@ Runs when the bot is waiting for a bus number.
 Step by step:
 
 1. Call `BusService.getStopsByBusNumber(text)`.
-2. If no stops are found, tell the user to try again.
+2. If no stops are found, tell the user in Burmese that the bus line was not found.
 3. If stops are found, format them in route order.
 4. Send the list back to Telegram.
 5. Reset the user's session state to `IDLE`.
@@ -296,7 +365,7 @@ Runs when the bot is waiting for a stop name.
 Step by step:
 
 1. Call `BusService.searchStops(text)`.
-2. If no stops are found, ask the user to try again.
+2. If no stops are found, ask the user in Burmese to try again.
 3. If exactly one stop is found, show buses for that stop.
 4. If multiple stops are found, show a numbered list.
 5. Store the possible choices in `Session.tempData`.
@@ -331,14 +400,54 @@ Step by step:
 5. Reset session state to `IDLE`.
 6. Show the main menu.
 
+## `TelegramKeyboard`
+
+File: `src/telegram/telegram.keyboard.ts`
+
+This class owns Telegram API message sending and keyboard markup.
+
+Keeping this separate is a nice design choice: the handler can focus on bot logic, while this class handles Telegram-specific message details.
+
+### `TELEGRAM_KEYBOARD_TEXT`
+
+Stores the keyboard button labels in one place.
+
+Current Burmese labels:
+
+- `🚌 ယာဥ်လိုင်းနံပါတ်ဖြင့် ရှာရန်`
+- `🚏 မှတ်တိုင်ဖြင့်ရှာရန်`
+- `🔙 ပင်မစာမျက်နှာပြန်သွားရန်`
+
+It also keeps old English labels:
+
+- `🚌 Search by Bus Line`
+- `🚏 Search by Stop Name`
+
+Those old labels matter because Telegram clients can still show an old keyboard until `/start` refreshes the menu.
+
+### `TELEGRAM_CALLBACK_DATA`
+
+Stores callback values for inline menu buttons.
+
+Current callback values:
+
+- `SEARCH_BY_BUS_LINE`
+- `SEARCH_BY_STOP_NAME`
+
+These values are not shown to the user. Telegram sends them back to the bot when the user clicks an inline button.
+
 ### `showMainMenu(chatId)`
 
-Sends the main Telegram keyboard.
+Sends the main menu with Burmese inline buttons under the message.
 
 The menu currently has two options:
 
-- Search by Bus Line
-- Search by Stop Name
+- Search by bus line number.
+- Search by stop name.
+
+After sending the inline menu, it also sends a small message with `remove_keyboard: true`. This clears any old reply keyboard under the input box.
+
+The current design intentionally does not show persistent buttons under the input box. The menu buttons live under the message, which keeps the chat cleaner.
 
 ### `sendMessage(chatId, text, replyMarkup)`
 
@@ -359,13 +468,17 @@ This is important because Telegram may reject messages for normal reasons, such 
 
 The bot should not crash just because one message cannot be sent.
 
-### Type Guard Helpers
+### `removeKeyboard(chatId, text)`
 
-`isTelegramTextUpdate(body)` checks that the incoming Telegram payload is actually a text message before the bot tries to read `message.text`.
+Sends a message and removes the Telegram custom keyboard.
 
-`isStopChoiceArray(value)` checks that stored session choice data has the shape the bot expects.
+This is used when the bot needs typed input, like a bus number or a stop name, and when the main menu wants to clear older reply keyboards.
 
-These helpers are defensive programming. External input and JSON stored in the database should not be blindly trusted.
+### `answerCallbackQuery(callbackQueryId)`
+
+Acknowledges an inline button click.
+
+Telegram clients show a loading spinner after an inline button is clicked. Calling `answerCallbackQuery` tells Telegram, "The bot received the click."
 
 ## `BusService`
 
@@ -390,7 +503,7 @@ Step by step:
 Used by:
 
 ```text
-TelegramService.handleBusNumberInput()
+TelegramHandler.handleBusNumberInput()
 ```
 
 ### `searchStops(name)`
@@ -407,7 +520,7 @@ Step by step:
 Used by:
 
 ```text
-TelegramService.handleStopNameInput()
+TelegramHandler.handleStopNameInput()
 ```
 
 ### `getBusesByStop(stopId)`
@@ -424,7 +537,7 @@ Step by step:
 Used by:
 
 ```text
-TelegramService.showBusesForStop()
+TelegramHandler.showBusesForStop()
 ```
 
 ## `SessionService`
@@ -473,9 +586,9 @@ If the user searches for a stop and the bot finds three possible stops, those th
 
 ```text
 User: /start
-Bot: shows menu
+Bot: shows menu with inline buttons under the message
 
-User: 🚌 Search by Bus Line
+User: clicks 🚌 ယာဥ်လိုင်းနံပါတ်ဖြင့် ရှာရန်
 Bot: Enter bus line number
 Session state: WAITING_BUS_NUMBER
 
@@ -489,7 +602,7 @@ Bot: shows menu
 ### Search By Stop Name
 
 ```text
-User: 🚏 Search by Stop Name
+User: clicks 🚏 မှတ်တိုင်ဖြင့်ရှာရန်
 Bot: Enter stop name
 Session state: WAITING_STOP_NAME
 
@@ -522,7 +635,7 @@ Telegram does not automatically remember conversations for your app.
 Every webhook request is just one message. So the app needs to store state like:
 
 ```text
-This user clicked "Search by Bus Line".
+This user clicked "Search by Bus Line" or "ယာဥ်လိုင်းနံပါတ်ဖြင့် ရှာရန်".
 The next message should be treated as a bus number.
 ```
 
@@ -552,7 +665,7 @@ A module groups related providers/controllers.
 Example:
 
 ```text
-TelegramModule = TelegramController + TelegramService + imported dependencies
+TelegramModule = TelegramController + TelegramService + TelegramHandler + TelegramKeyboard + imported dependencies
 ```
 
 ### Controller
@@ -572,7 +685,9 @@ A service contains business logic.
 Example:
 
 ```text
-TelegramService decides what reply to send.
+TelegramService routes incoming Telegram updates.
+TelegramHandler decides what reply/action to perform.
+TelegramKeyboard sends Telegram messages and keyboards.
 BusService queries bus data.
 SessionService stores chat state.
 ```
@@ -586,11 +701,11 @@ Example:
 ```ts
 constructor(
   private readonly sessionService: SessionService,
-  private readonly busService: BusService,
+  private readonly handler: TelegramHandler,
 ) {}
 ```
 
-This means `TelegramService` does not manually create `SessionService` or `BusService`. Nest creates and injects them.
+This means `TelegramService` does not manually create `SessionService` or `TelegramHandler`. Nest creates and injects them.
 
 ### Repository
 
@@ -627,8 +742,10 @@ Think of the bot like a receptionist.
 
 `SessionService` remembers the current conversation.
 
+`TelegramHandler` performs the selected bot action.
+
 `BusService` looks up the answer.
 
-`TelegramService` replies to the user.
+`TelegramKeyboard` replies to the user.
 
 That is the main workflow of the app.

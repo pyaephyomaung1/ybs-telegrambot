@@ -16,6 +16,10 @@ export class TelegramHandler {
     await this.keyboard.showMainMenu(chatId);
   }
 
+  async answerCallbackQuery(callbackQueryId: string) {
+    await this.keyboard.answerCallbackQuery(callbackQueryId);
+  }
+
   async askForBusNumber(chatId: number) {
     await this.keyboard.removeKeyboard(
       chatId,
@@ -128,7 +132,10 @@ export class TelegramHandler {
       );
     } else {
       const busList = buses
-        .map((b) => `• ယာဥ်လိုင်းနံပါတ် ${b.busLine.number} — ${b.busLine.description}`)
+        .map(
+          (b) =>
+            `• ယာဥ်လိုင်းနံပါတ် ${b.busLine.number} — ${b.busLine.description}`,
+        )
         .join('\n');
 
       await this.keyboard.sendMessage(

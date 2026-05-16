@@ -2,7 +2,10 @@
 import { Injectable } from '@nestjs/common';
 import { SessionService } from '../session/session.service';
 import { TelegramHandler } from './telegram.handler';
-import { TELEGRAM_KEYBOARD_TEXT } from './telegram.keyboard';
+import {
+  TELEGRAM_CALLBACK_DATA,
+  TELEGRAM_KEYBOARD_TEXT,
+} from './telegram.keyboard';
 
 interface TelegramTextUpdate {
   message: {
@@ -16,6 +19,21 @@ interface TelegramTextUpdate {
   };
 }
 
+interface TelegramCallbackUpdate {
+  callback_query: {
+    id: string;
+    data: string;
+    from: {
+      id: number;
+    };
+    message: {
+      chat: {
+        id: number;
+      };
+    };
+  };
+}
+
 @Injectable()
 export class TelegramService {
   constructor(
@@ -24,16 +42,21 @@ export class TelegramService {
   ) {}
 
   async handleUpdate(body: unknown): Promise<void> {
+    if (this.isTelegramCallbackUpdate(body)) {
+      await this.handleCallbackUpdate(body);
+      return;
+    }
+
     if (!this.isTelegramTextUpdate(body)) return;
 
     const telegramId = body.message.from.id;
     const text = body.message.text.trim();
     const chatId = body.message.chat.id;
 
+    const session = await this.sessionService.getOrCreate(telegramId);
+
     // Handle navigation commands first (always works regardless of state)
     if (await this.handleNavigation(chatId, telegramId, text)) return;
-
-    const session = await this.sessionService.getOrCreate(telegramId);
 
     switch (session.state) {
       case 'IDLE':
@@ -56,6 +79,29 @@ export class TelegramService {
       default:
         await this.sessionService.setState(telegramId, 'IDLE');
         await this.handler.handleIdle(chatId);
+    }
+  }
+
+  private async handleCallbackUpdate(
+    body: TelegramCallbackUpdate,
+  ): Promise<void> {
+    const telegramId = body.callback_query.from.id;
+    const chatId = body.callback_query.message.chat.id;
+    const callbackQueryId = body.callback_query.id;
+    const data = body.callback_query.data;
+
+    await this.sessionService.getOrCreate(telegramId);
+    await this.handler.answerCallbackQuery(callbackQueryId);
+
+    if (data === TELEGRAM_CALLBACK_DATA.searchByBusLine) {
+      await this.sessionService.setState(telegramId, 'WAITING_BUS_NUMBER');
+      await this.handler.askForBusNumber(chatId);
+      return;
+    }
+
+    if (data === TELEGRAM_CALLBACK_DATA.searchByStopName) {
+      await this.sessionService.setState(telegramId, 'WAITING_STOP_NAME');
+      await this.handler.askForStopName(chatId);
     }
   }
 
@@ -102,6 +148,32 @@ export class TelegramService {
     const chat = (message as { chat?: unknown }).chat;
     if (typeof text !== 'string') return false;
     if (!from || typeof from !== 'object') return false;
+    if (!chat || typeof chat !== 'object') return false;
+
+    return (
+      typeof (from as { id?: unknown }).id === 'number' &&
+      typeof (chat as { id?: unknown }).id === 'number'
+    );
+  }
+
+  private isTelegramCallbackUpdate(
+    body: unknown,
+  ): body is TelegramCallbackUpdate {
+    if (!body || typeof body !== 'object') return false;
+
+    const callbackQuery = (body as { callback_query?: unknown }).callback_query;
+    if (!callbackQuery || typeof callbackQuery !== 'object') return false;
+
+    const id = (callbackQuery as { id?: unknown }).id;
+    const data = (callbackQuery as { data?: unknown }).data;
+    const from = (callbackQuery as { from?: unknown }).from;
+    const message = (callbackQuery as { message?: unknown }).message;
+    if (typeof id !== 'string') return false;
+    if (typeof data !== 'string') return false;
+    if (!from || typeof from !== 'object') return false;
+    if (!message || typeof message !== 'object') return false;
+
+    const chat = (message as { chat?: unknown }).chat;
     if (!chat || typeof chat !== 'object') return false;
 
     return (

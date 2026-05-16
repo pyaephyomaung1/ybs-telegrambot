@@ -11,6 +11,7 @@ describe('TelegramService', () => {
     setTempData: jest.fn(),
   };
   const handler = {
+    answerCallbackQuery: jest.fn(),
     askForBusNumber: jest.fn(),
     askForStopName: jest.fn(),
     handleBusNumberInput: jest.fn(),
