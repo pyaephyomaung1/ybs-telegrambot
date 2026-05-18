@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { SessionService } from '../session/session.service';
 import { BusService } from '../bus/bus.service';
 import { TelegramKeyboard } from './telegram.keyboard';
-import { SessionStopChoice } from '../entities/session.entity';
-import { Stop } from '../entities/stop.entity';
+import { SessionStopChoice } from '../models/session.model';
+import { Stop } from '../models/stop.model';
 import { parseMyanmarNumber } from './number.util';
 
 const UNKNOWN_TOWNSHIP_NAMES = new Set(['မသိရ', 'Unknown', '']);
@@ -167,33 +167,44 @@ export class TelegramHandler {
     stops: Stop[],
   ) {
     if (stops.length > 1) {
-      const choices = (
-        await Promise.all(
-          stops.map(async (stop, index) => {
-            const busNumbers = await this.getBusNumbersForStop(stop.id);
-            return `${index + 1}. ${this.formatStopName(stop)}\n   ယာဥ်လိုင်း: ${busNumbers.join(', ') || '-'}`;
-          }),
+      const stopChoices = await Promise.all(
+        stops.map(async (stop) => ({
+          stop,
+          busNumbers: await this.getBusNumbersForStop(stop.id),
+        })),
+      );
+      const groupedChoices = new Map<
+        string,
+        { busNumbers: string[]; labels: string[] }
+      >();
+
+      for (const choice of stopChoices) {
+        const key = choice.busNumbers.join('|');
+        const group = groupedChoices.get(key);
+
+        if (group) {
+          group.labels.push(this.formatStopName(choice.stop));
+        } else {
+          groupedChoices.set(key, {
+            busNumbers: choice.busNumbers,
+            labels: [this.formatStopName(choice.stop)],
+          });
+        }
+      }
+
+      const choices = [...groupedChoices.values()]
+        .map(
+          ({ labels, busNumbers }, index) =>
+            `${index + 1}. ${[...new Set(labels)].join(' / ')}\n   ယာဥ်လိုင်း: ${busNumbers.join(', ') || '-'}`,
         )
-      ).join('\n');
+        .join('\n');
 
       await this.keyboard.sendMessage(
         chatId,
-        `"${text}" အတွက် မှတ်တိုင် ${stops.length} ခု တွေ့ပါသည်:\n\n${choices}\n\nနံပါတ်ဖြင့် ရွေးချယ်ပါ (1, 2, ...)`,
+        `"${text}" အတွက် တွေ့သော ယာဥ်လိုင်းနံပါတ်များ:\n\n${choices}`,
       );
-      await this.keyboard.sendMessageWithBackButton(
-        chatId,
-        'ရွေးချယ်မှုမှ ထွက်ရန် နောက်သို့ ကို နှိပ်ပါ။',
-      );
-
-      await this.sessionService.setState(telegramId, 'WAITING_STOP_CHOICE');
-      await this.sessionService.setTempData(
-        telegramId,
-        stops.map((s) => ({
-          id: s.id,
-          name: s.name,
-          township: { name: s.township.name },
-        })),
-      );
+      await this.sessionService.setState(telegramId, 'IDLE');
+      await this.keyboard.showMainMenu(chatId);
       return;
     }
 

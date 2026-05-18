@@ -8,10 +8,10 @@ import {
   StopSeed,
   townships,
 } from '../data';
-import { BusLineStop } from '../entities/bus-line-stop.entity';
-import { Stop } from '../entities/stop.entity';
-import { Township } from '../entities/township.entity';
-import { BusLine } from '../entities/bus-line.entity';
+import { BusLineStop } from '../models/bus-line-stop.model';
+import { Stop } from '../models/stop.model';
+import { Township } from '../models/township.model';
+import { BusLine } from '../models/bus-line.model';
 import { normalizeMyanmarDigits } from '../telegram/number.util';
 
 const UNKNOWN_TOWNSHIP_NAMES = new Set(['မသိရ', 'Unknown', '']);

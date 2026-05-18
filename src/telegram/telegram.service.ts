@@ -1,7 +1,7 @@
 // src/telegram/telegram.service.ts
 import { Injectable } from '@nestjs/common';
 import { SessionService } from '../session/session.service';
-import { TelegramHandler } from './telegram.handler';
+import { TelegramHandler } from './telegram-handler';
 import {
   TELEGRAM_CALLBACK_DATA,
   TELEGRAM_KEYBOARD_TEXT,

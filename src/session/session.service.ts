@@ -1,6 +1,6 @@
 // src/session/session.service.ts
 import { Injectable } from '@nestjs/common';
-import { Session, SessionStopChoice } from '../entities/session.entity';
+import { Session, SessionStopChoice } from '../models/session.model';
 
 @Injectable()
 export class SessionService {

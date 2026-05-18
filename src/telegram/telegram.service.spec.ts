@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SessionService } from '../session/session.service';
-import { TelegramHandler } from './telegram.handler';
+import { TelegramHandler } from './telegram-handler';
 import { TelegramService } from './telegram.service';
 
 describe('TelegramService', () => {

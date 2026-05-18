@@ -145,14 +145,24 @@ function readGitBaseline(filePath) {
 }
 
 async function fetchText(url) {
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'yangon-bus-bot-data-updater/1.0',
-    },
-  });
+  let response;
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    response = await fetch(url, {
+      headers: {
+        'User-Agent': 'yangon-bus-bot-data-updater/1.0',
+      },
+    });
+
+    if (response.ok) break;
+
+    if (attempt < 3) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
+
+  if (!response?.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response?.status}`);
   }
 
   return response.text();
@@ -304,7 +314,14 @@ async function main() {
   const routes = [];
   const routeSignatures = new Set();
   for (const [index, routeLink] of routeLinks.entries()) {
-    const html = await fetchText(routeLink.url);
+    let html;
+    try {
+      html = await fetchText(routeLink.url);
+    } catch (error) {
+      console.warn(`Skipping ${routeLink.url}: ${error.message}`);
+      continue;
+    }
+
     const route = parseRoutePage(routeLink.routeId, html);
 
     if (route.stops.length === 0) {
@@ -383,17 +400,6 @@ async function main() {
     const previousStop = findPreviousStopForRouteStop(existing, route, routeStop);
     if (previousStop) {
       return [createStop(`previous:${previousStop.id}`, routeStop, previousStop)];
-    }
-
-    const existingStops = existing.stopsByName.get(normalizeText(routeStop.name));
-    const knownExistingStops = existingStops?.filter(
-      (stop) => stop.townshipId !== unknownTownship.id,
-    );
-
-    if (knownExistingStops && knownExistingStops.length > 1) {
-      return knownExistingStops.map((stop) =>
-        createStop(`previous:${stop.id}`, routeStop, stop),
-      );
     }
 
     return [createStop(`name:${normalizeText(routeStop.name)}`, routeStop, null)];

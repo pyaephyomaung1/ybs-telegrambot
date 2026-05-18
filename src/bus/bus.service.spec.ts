@@ -36,7 +36,7 @@ describe('BusService', () => {
     const stops = await service.searchStops('108 တောင်');
 
     expect(stops.length).toBeGreaterThan(0);
-    expect(stops.some((stop) => stop.name === '၁၀၈တောင်စေတီ')).toBe(true);
+    expect(stops.some((stop) => stop.name === '(၁၀၈) တောင်')).toBe(true);
   });
 
   it('returns buses that reach a township', async () => {
