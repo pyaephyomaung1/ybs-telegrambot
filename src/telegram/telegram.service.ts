@@ -82,6 +82,12 @@ export class TelegramService {
     await this.sessionService.getOrCreate(telegramId);
     await this.handler.answerCallbackQuery(callbackQueryId);
 
+    if (data === TELEGRAM_CALLBACK_DATA.back) {
+      await this.sessionService.setState(telegramId, 'IDLE');
+      await this.handler.handleIdle(chatId);
+      return;
+    }
+
     if (data === TELEGRAM_CALLBACK_DATA.searchByBusLine) {
       await this.sessionService.setState(telegramId, 'WAITING_BUS_NUMBER');
       await this.handler.askForBusNumber(chatId);

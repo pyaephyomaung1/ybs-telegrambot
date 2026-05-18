@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Logger } from '@nestjs/common';
 
 export const TELEGRAM_KEYBOARD_TEXT = {
+  back: 'နောက်သို့',
   mainMenu: '🔙 ပင်မစာမျက်နှာပြန်သွားရန်',
   searchByBusLine: '🚌 ယာဥ်လိုင်းနံပါတ်ဖြင့် ရှာရန်',
   searchByStopName: '🚏 မှတ်တိုင်ဖြင့်ရှာရန်',
@@ -11,6 +12,7 @@ export const TELEGRAM_KEYBOARD_TEXT = {
 } as const;
 
 export const TELEGRAM_CALLBACK_DATA = {
+  back: 'BACK',
   searchByBusLine: 'SEARCH_BY_BUS_LINE',
   searchByStopName: 'SEARCH_BY_STOP_NAME',
 } as const;
@@ -94,6 +96,19 @@ export class TelegramKeyboard {
 
   async removeKeyboard(chatId: number, text: string) {
     await this.sendMessage(chatId, text, { remove_keyboard: true });
+  }
+
+  async sendMessageWithBackButton(chatId: number, text: string) {
+    await this.sendMessage(chatId, text, {
+      inline_keyboard: [
+        [
+          {
+            text: TELEGRAM_KEYBOARD_TEXT.back,
+            callback_data: TELEGRAM_CALLBACK_DATA.back,
+          },
+        ],
+      ],
+    });
   }
 
   async answerCallbackQuery(callbackQueryId: string) {

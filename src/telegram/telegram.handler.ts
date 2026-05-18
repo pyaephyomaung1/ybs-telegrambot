@@ -3,6 +3,7 @@ import { SessionService } from '../session/session.service';
 import { BusService } from '../bus/bus.service';
 import { TelegramKeyboard } from './telegram.keyboard';
 import { SessionStopChoice } from '../entities/session.entity';
+import { Stop } from '../entities/stop.entity';
 
 @Injectable()
 export class TelegramHandler {
@@ -21,14 +22,17 @@ export class TelegramHandler {
   }
 
   async askForBusNumber(chatId: number) {
-    await this.keyboard.removeKeyboard(
+    await this.keyboard.sendMessageWithBackButton(
       chatId,
       'ယာဥ်လိုင်းနံပါတ်ရိုက်ထည့်ပါ:\n(ဥပမာ. 4, 7, 43)',
     );
   }
 
   async askForStopName(chatId: number) {
-    await this.keyboard.removeKeyboard(chatId, 'မှတ်တိုင်အမည်ရိုက်ထည့်ပါ:');
+    await this.keyboard.sendMessageWithBackButton(
+      chatId,
+      'မှတ်တိုင်အမည်ရိုက်ထည့်ပါ:',
+    );
   }
 
   async handleBusNumberInput(chatId: number, telegramId: number, text: string) {
@@ -55,7 +59,9 @@ export class TelegramHandler {
   }
 
   async handleStopNameInput(chatId: number, telegramId: number, text: string) {
-    const stops = await this.busService.searchStops(text);
+    const stops = this.getUniqueStopChoices(
+      await this.busService.searchStops(text),
+    );
 
     if (!stops || stops.length === 0) {
       await this.keyboard.sendMessage(
@@ -72,7 +78,11 @@ export class TelegramHandler {
 
       await this.keyboard.sendMessage(
         chatId,
-        `Found ${stops.length} stops named "${text}":\n\n${choices}\n\nReply with a number (1, 2, ...)`,
+        `"${text}" အတွက် မှတ်တိုင် ${stops.length} ခု တွေ့ပါသည်:\n\n${choices}\n\nနံပါတ်ဖြင့် ရွေးချယ်ပါ (1, 2, ...)`,
+      );
+      await this.keyboard.sendMessageWithBackButton(
+        chatId,
+        'ရွေးချယ်မှုမှ ထွက်ရန် နောက်သို့ ကို နှိပ်ပါ။',
       );
 
       await this.sessionService.setState(telegramId, 'WAITING_STOP_CHOICE');
@@ -146,5 +156,18 @@ export class TelegramHandler {
 
     await this.sessionService.setState(telegramId, 'IDLE');
     await this.keyboard.showMainMenu(chatId);
+  }
+
+  private getUniqueStopChoices(stops: Stop[]): Stop[] {
+    const uniqueStops = new Map<string, Stop>();
+
+    for (const stop of stops) {
+      const key = `${stop.name}|${stop.township.name}`;
+      if (!uniqueStops.has(key)) {
+        uniqueStops.set(key, stop);
+      }
+    }
+
+    return [...uniqueStops.values()];
   }
 }
