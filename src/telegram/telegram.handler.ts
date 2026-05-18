@@ -52,7 +52,7 @@ export class TelegramHandler {
 
     await this.keyboard.sendMessage(
       chatId,
-      `🚌 ယာလိုင်းနံပါတ် ${text} ရောက်ရှိသော မှတ်တိုင်များ:\n\n${stopList}`,
+      `🚌 ယာဥ်လိုင်းနံပါတ် ${text} ရောက်ရှိသော မှတ်တိုင်များ:\n\n${stopList}`,
     );
     await this.sessionService.setState(telegramId, 'IDLE');
     await this.keyboard.showMainMenu(chatId);
@@ -150,7 +150,7 @@ export class TelegramHandler {
 
       await this.keyboard.sendMessage(
         chatId,
-        `🚏 ${stop.name} (${stop.township.name}) သို့ ရောက်တော့ ယာဥ်နံပါတ်များ :\n\n${busList}`,
+        `🚏 ${stop.name} (${stop.township.name}) သို့ ရောက်ရှိသော ယာဥ်နံပါတ်များ :\n\n${busList}`,
       );
     }
 
