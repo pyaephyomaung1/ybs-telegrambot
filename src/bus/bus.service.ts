@@ -7,7 +7,7 @@ import {
   stops,
   StopSeed,
   townships,
-} from '../seed';
+} from '../data';
 import { BusLineStop } from '../entities/bus-line-stop.entity';
 import { Stop } from '../entities/stop.entity';
 import { Township } from '../entities/township.entity';

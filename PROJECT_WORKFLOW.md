@@ -10,7 +10,7 @@ This project is a NestJS Telegram bot. Its job is simple:
 The project uses three main NestJS feature areas:
 
 - `TelegramModule`: receives Telegram webhook messages and controls the chat flow.
-- `BusModule`: reads bus, stop, township, and route data from `src/seed.ts`.
+- `BusModule`: reads bus, stop, township, and route data from `src/data`.
 - `SessionModule`: remembers each Telegram user's current conversation state in memory.
 
 ## Big Picture
@@ -23,7 +23,7 @@ The app starts in `main.ts`.
 
 - `ConfigModule` for environment variables.
 - `ConfigModule` for environment variables, such as the Telegram bot token.
-- local seed data from `src/seed.ts` for bus routes.
+- local generated data from `src/data` for bus routes and stops.
 - the app feature modules: Telegram, Bus, and Session.
 
 So the high-level runtime flow is:
@@ -38,7 +38,7 @@ Telegram -> POST /telegram/webhook -> TelegramController -> TelegramService
                          TelegramHandler performs the bot action
                                                      |
                                                      v
-                                  BusService queries src/seed.ts
+                                  BusService queries src/data
                                                      |
                                                      v
                               TelegramKeyboard sends Telegram reply
@@ -512,7 +512,7 @@ File: `src/bus/bus.service.ts`
 
 This service owns bus-related lookups.
 
-It reads from `src/seed.ts`, not from a database. That makes the bot easier to run while learning NestJS: edit the seed arrays, restart the app, and the bot uses the new data.
+It reads from `src/data`, not from a database. That makes the bot easier to run while learning NestJS: regenerate or edit the local data files, restart the app, and the bot uses the new data.
 
 ### `getStopsByBusNumber(busNumber)`
 
@@ -621,7 +621,7 @@ Bot: Enter bus line number
 Session state: WAITING_BUS_NUMBER
 
 User: 43
-Bot: looks up route stops for bus 43 from `src/seed.ts`
+Bot: looks up route stops for bus 43 from `src/data`
 Bot: sends ordered stop list
 Session state: IDLE
 Bot: shows menu
@@ -752,14 +752,18 @@ This means `TelegramService` does not manually create `SessionService` or `Teleg
 
 ### Seed Data
 
-Seed data is stored in `src/seed.ts`.
+Seed data is stored in `src/data`.
 
-It contains plain TypeScript arrays:
+It contains generated TypeScript arrays split by responsibility:
 
-- `townships`
-- `busLines`
-- `stops`
-- `busLineStops`
+- `src/data/townships.ts`
+- `src/data/bus-lines.ts`
+- `src/data/stops.ts`
+- `src/data/bus-line-stops.ts`
+- `src/data/types.ts`
+- `src/data/index.ts`
+
+`src/seed.ts` is kept as a small compatibility re-export.
 
 To add new route data, edit those arrays. The important relationship is:
 
@@ -775,7 +779,7 @@ This project is good for learning, but a production bot would usually improve th
 
 - Move from in-memory seed data to a database when the dataset becomes large.
 - Persist sessions if you need conversation state to survive app restarts.
-- Add more complete seed data for townships, stops, and bus routes.
+- Add a repeatable data-generation script for refreshing `src/data` from upstream YBS files.
 - Add stronger tests for Telegram conversation flows.
 - Validate required environment variables on startup.
 - Move Telegram API calls into a small client class.
