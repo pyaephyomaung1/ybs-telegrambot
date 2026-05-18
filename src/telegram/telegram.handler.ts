@@ -6,6 +6,8 @@ import { SessionStopChoice } from '../entities/session.entity';
 import { Stop } from '../entities/stop.entity';
 import { parseMyanmarNumber } from './number.util';
 
+const UNKNOWN_TOWNSHIP_NAMES = new Set(['မသိရ', 'Unknown', '']);
+
 @Injectable()
 export class TelegramHandler {
   constructor(
@@ -48,7 +50,7 @@ export class TelegramHandler {
     }
 
     const stopList = stops
-      .map((s, i) => `${i + 1}. ${s.stop.name} (${s.stop.township.name})`)
+      .map((s, i) => `${i + 1}. ${this.formatStopName(s.stop)}`)
       .join('\n');
 
     await this.keyboard.sendMessage(
@@ -146,16 +148,11 @@ export class TelegramHandler {
         `❌ တောင်းပန်ပါတယ် မှတ်တိုင်ရှာမတွေ့ပါ`,
       );
     } else {
-      const busList = buses
-        .map(
-          (b) =>
-            `• ယာဥ်လိုင်းနံပါတ် ${b.busLine.number} — ${b.busLine.description}`,
-        )
-        .join('\n');
+      const busNumbers = this.getUniqueBusNumbers(buses);
 
       await this.keyboard.sendMessage(
         chatId,
-        `🚏 ${stop.name} (${stop.township.name}) သို့ ရောက်ရှိသော ယာဥ်နံပါတ်များ :\n\n${busList}`,
+        `🚏 ${this.formatSessionStopName(stop)} သို့ ရောက်ရှိသော ယာဥ်လိုင်းနံပါတ်များ:\n\n${busNumbers.join(', ')}`,
       );
     }
 
@@ -170,9 +167,14 @@ export class TelegramHandler {
     stops: Stop[],
   ) {
     if (stops.length > 1) {
-      const choices = stops
-        .map((s, i) => `${i + 1}. ${s.name} — ${s.township.name}`)
-        .join('\n');
+      const choices = (
+        await Promise.all(
+          stops.map(async (stop, index) => {
+            const busNumbers = await this.getBusNumbersForStop(stop.id);
+            return `${index + 1}. ${this.formatStopName(stop)}\n   ယာဥ်လိုင်း: ${busNumbers.join(', ') || '-'}`;
+          }),
+        )
+      ).join('\n');
 
       await this.keyboard.sendMessage(
         chatId,
@@ -229,12 +231,46 @@ export class TelegramHandler {
     const uniqueStops = new Map<string, Stop>();
 
     for (const stop of stops) {
-      const key = `${stop.name}|${stop.township.name}`;
+      const key = String(stop.id);
       if (!uniqueStops.has(key)) {
         uniqueStops.set(key, stop);
       }
     }
 
     return [...uniqueStops.values()];
+  }
+
+  private formatStopName(stop: Stop): string {
+    if (this.isUnknownTownship(stop.township.name)) {
+      return stop.name;
+    }
+
+    return `${stop.name} (${stop.township.name})`;
+  }
+
+  private formatSessionStopName(stop: SessionStopChoice): string {
+    if (this.isUnknownTownship(stop.township.name)) {
+      return stop.name;
+    }
+
+    return `${stop.name} (${stop.township.name})`;
+  }
+
+  private isUnknownTownship(townshipName: string): boolean {
+    return UNKNOWN_TOWNSHIP_NAMES.has(townshipName.trim());
+  }
+
+  private async getBusNumbersForStop(stopId: number): Promise<string[]> {
+    const buses = await this.busService.getBusesByStop(stopId);
+
+    return this.getUniqueBusNumbers(buses);
+  }
+
+  private getUniqueBusNumbers(
+    buses: Awaited<ReturnType<BusService['getBusesByStop']>>,
+  ): string[] {
+    return [...new Set(buses.map((bus) => bus.busLine.number))].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true }),
+    );
   }
 }

@@ -1,4 +1,4 @@
-// Generated from thantthet/YBS-Data. Edit the generator/source data, or regenerate carefully.
+// Generated from yangonbusroute.com. Run: npm run data:update-yangonbusroute
 import type { TownshipSeed } from './types';
 
 export const townships: TownshipSeed[] = [
@@ -226,5 +226,10 @@ export const townships: TownshipSeed[] = [
     id: 45,
     name: 'Mingala Taungnyunt',
     nameEn: 'Mingala Taungnyunt',
+  },
+  {
+    id: 46,
+    name: 'မသိရ',
+    nameEn: 'Unknown',
   },
 ];

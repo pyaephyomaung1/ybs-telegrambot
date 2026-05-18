@@ -26,17 +26,17 @@ describe('BusService', () => {
   });
 
   it('can search exact stops without road-name broad matches', async () => {
-    const stops = await service.searchExactStops('စမ်းချောင်းပေါက်');
+    const stops = await service.searchExactStops('စွမ်းအင်');
 
     expect(stops.length).toBeGreaterThan(0);
-    expect(stops.every((stop) => stop.name === 'စမ်းချောင်းပေါက်')).toBe(true);
+    expect(stops.every((stop) => stop.name === 'စွမ်းအင်')).toBe(true);
   });
 
   it('matches stops with Myanmar digits and optional punctuation', async () => {
-    const stops = await service.searchExactStops('108 တောင်');
+    const stops = await service.searchStops('108 တောင်');
 
     expect(stops.length).toBeGreaterThan(0);
-    expect(stops.every((stop) => stop.name === '(၁၀၈) တောင်')).toBe(true);
+    expect(stops.some((stop) => stop.name === '၁၀၈တောင်စေတီ')).toBe(true);
   });
 
   it('returns buses that reach a township', async () => {

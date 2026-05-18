@@ -14,6 +14,8 @@ import { Township } from '../entities/township.entity';
 import { BusLine } from '../entities/bus-line.entity';
 import { normalizeMyanmarDigits } from '../telegram/number.util';
 
+const UNKNOWN_TOWNSHIP_NAMES = new Set(['မသိရ', 'Unknown', '']);
+
 @Injectable()
 export class BusService {
   // Search by bus number → return all stops in order
@@ -32,6 +34,7 @@ export class BusService {
     if (busLineMatches.length === 0) return Promise.resolve([]);
 
     const busLineIds = new Set(busLineMatches.map((line) => line.id));
+    const seenRoutePositions = new Set<string>();
 
     const results = busLineStops
       .filter((busLineStop) => busLineIds.has(busLineStop.busLineId))
@@ -40,6 +43,13 @@ export class BusService {
           ? a.stopOrder - b.stopOrder
           : a.busLineId - b.busLineId,
       )
+      .filter((busLineStop) => {
+        const key = `${busLineStop.busLineId}|${busLineStop.stopOrder}`;
+        if (seenRoutePositions.has(key)) return false;
+
+        seenRoutePositions.add(key);
+        return true;
+      })
       .map((busLineStop) => this.toBusLineStopEntity(busLineStop));
 
     return Promise.resolve(results);
@@ -80,12 +90,14 @@ export class BusService {
     const normalizedName = this.normalizeSearchText(name);
 
     const results = townships
-      .filter((township) =>
-        [township.name, township.nameEn]
-          .filter(Boolean)
-          .some((value) =>
-            this.normalizeSearchText(value).includes(normalizedName),
-          ),
+      .filter(
+        (township) =>
+          !UNKNOWN_TOWNSHIP_NAMES.has(township.name.trim()) &&
+          [township.name, township.nameEn]
+            .filter(Boolean)
+            .some((value) =>
+              this.normalizeSearchText(value).includes(normalizedName),
+            ),
       )
       .map((township) => ({
         id: township.id,
@@ -97,6 +109,10 @@ export class BusService {
   }
 
   getBusesByTownship(townshipId: number): Promise<BusLine[]> {
+    const township = townships.find((item) => item.id === townshipId);
+    const townshipNames = [township?.name, township?.nameEn]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => this.normalizeSearchText(value));
     const stopIdsInTownship = new Set(
       stops
         .filter((stop) => stop.townshipId === townshipId)
@@ -109,7 +125,15 @@ export class BusService {
     );
 
     const results = busLines
-      .filter((busLine) => busLineIds.has(busLine.id))
+      .filter(
+        (busLine) =>
+          busLineIds.has(busLine.id) ||
+          townshipNames.some((townshipName) =>
+            this.normalizeSearchText(busLine.description).includes(
+              townshipName,
+            ),
+          ),
+      )
       .sort((a, b) =>
         a.number.localeCompare(b.number, undefined, { numeric: true }),
       )

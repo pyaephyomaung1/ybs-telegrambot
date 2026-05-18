@@ -28,19 +28,28 @@ Built as a school project by **Pyae Phyo Maung**, with data entry support from *
 
 ---
 
-## Data Source
+## Data Sources
 
-YBS bus, stop, and route data used in this project is based on the public dataset from:
+YBS route and stop data used in this project is generated from:
+
+**Yangon Bus Route**  
+https://yangonbusroute.com/
+
+The generated local files live in `src/data/`. To refresh them from the website:
+
+```bash
+npm run data:update-yangonbusroute
+```
+
+Older township/location hints are preserved where possible from:
 
 **thantthet/YBS-Data**  
 https://github.com/thantthet/YBS-Data
 
-Data files used:
-
 - `data/stops.tsv` for YBS stop names, locations, roads, and townships
 - `data/routes/*.json` for bus route names and ordered stop lists
 
-Many thanks to the maintainers and contributors of `thantthet/YBS-Data` for making this data available.
+Many thanks to Yangon Bus Route and the maintainers/contributors of `thantthet/YBS-Data` for making YBS data available publicly.
 
 ---
 
@@ -98,6 +107,7 @@ If the same stop name exists in multiple townships, the bot will ask you to choo
 |---|---|
 | Project Developer | Pyae Phyo Maung |
 | Data Entry | Min Kaung Han, Aung Zay Ya |
+| Updated Route Source | [Yangon Bus Route](https://yangonbusroute.com/) |
 | Public YBS Dataset | [thantthet/YBS-Data](https://github.com/thantthet/YBS-Data) |
 
 ---
