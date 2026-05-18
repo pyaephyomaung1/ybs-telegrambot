@@ -6,6 +6,7 @@ import {
   TELEGRAM_CALLBACK_DATA,
   TELEGRAM_KEYBOARD_TEXT,
 } from './telegram.keyboard';
+import { normalizeMyanmarDigits } from './number.util';
 
 interface TelegramTextUpdate {
   message: {
@@ -50,7 +51,7 @@ export class TelegramService {
     if (!this.isTelegramTextUpdate(body)) return;
 
     const telegramId = body.message.from.id;
-    const text = body.message.text.trim();
+    const text = normalizeMyanmarDigits(body.message.text.trim());
     const chatId = body.message.chat.id;
 
     const session = await this.sessionService.getOrCreate(telegramId);

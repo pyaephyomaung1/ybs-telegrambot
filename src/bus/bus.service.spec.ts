@@ -24,4 +24,26 @@ describe('BusService', () => {
     expect(stops.at(-1)?.stopOrder).toBe(stops.length);
     expect(stops.every((stop) => stop.busLine.number === '4')).toBe(true);
   });
+
+  it('can search exact stops without road-name broad matches', async () => {
+    const stops = await service.searchExactStops('စမ်းချောင်းပေါက်');
+
+    expect(stops.length).toBeGreaterThan(0);
+    expect(stops.every((stop) => stop.name === 'စမ်းချောင်းပေါက်')).toBe(true);
+  });
+
+  it('matches stops with Myanmar digits and optional punctuation', async () => {
+    const stops = await service.searchExactStops('108 တောင်');
+
+    expect(stops.length).toBeGreaterThan(0);
+    expect(stops.every((stop) => stop.name === '(၁၀၈) တောင်')).toBe(true);
+  });
+
+  it('returns buses that reach a township', async () => {
+    const townships = await service.searchTownships('ရန်ကင်း');
+    const buses = await service.getBusesByTownship(townships[0].id);
+
+    expect(townships[0].name).toBe('ရန်ကင်း');
+    expect(buses.length).toBeGreaterThan(0);
+  });
 });

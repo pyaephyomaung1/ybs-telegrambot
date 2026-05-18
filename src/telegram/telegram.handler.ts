@@ -4,6 +4,7 @@ import { BusService } from '../bus/bus.service';
 import { TelegramKeyboard } from './telegram.keyboard';
 import { SessionStopChoice } from '../entities/session.entity';
 import { Stop } from '../entities/stop.entity';
+import { parseMyanmarNumber } from './number.util';
 
 @Injectable()
 export class TelegramHandler {
@@ -59,6 +60,36 @@ export class TelegramHandler {
   }
 
   async handleStopNameInput(chatId: number, telegramId: number, text: string) {
+    const exactStops = this.getUniqueStopChoices(
+      await this.busService.searchExactStops(text),
+    );
+    if (exactStops.length > 0) {
+      await this.replyWithStopChoices(chatId, telegramId, text, exactStops);
+      return;
+    }
+
+    const townships = await this.busService.searchTownships(text);
+    if (townships.length === 1) {
+      await this.showBusesForTownship(chatId, telegramId, townships[0]);
+      return;
+    }
+
+    if (townships.length > 1) {
+      const choices = townships
+        .map((township, index) => `${index + 1}. ${township.name}`)
+        .join('\n');
+
+      await this.keyboard.sendMessage(
+        chatId,
+        `"${text}" နှင့် ကိုက်ညီသော မြို့နယ် ${townships.length} ခု တွေ့ပါသည်:\n\n${choices}\n\nမြို့နယ်အမည်ကို ပိုတိကျစွာ ရိုက်ထည့်ပါ။`,
+      );
+      await this.keyboard.sendMessageWithBackButton(
+        chatId,
+        'ရှာဖွေမှုမှ ထွက်ရန် နောက်သို့ ကို နှိပ်ပါ။',
+      );
+      return;
+    }
+
     const stops = this.getUniqueStopChoices(
       await this.busService.searchStops(text),
     );
@@ -71,33 +102,7 @@ export class TelegramHandler {
       return;
     }
 
-    if (stops.length > 1) {
-      const choices = stops
-        .map((s, i) => `${i + 1}. ${s.name} — ${s.township.name}`)
-        .join('\n');
-
-      await this.keyboard.sendMessage(
-        chatId,
-        `"${text}" အတွက် မှတ်တိုင် ${stops.length} ခု တွေ့ပါသည်:\n\n${choices}\n\nနံပါတ်ဖြင့် ရွေးချယ်ပါ (1, 2, ...)`,
-      );
-      await this.keyboard.sendMessageWithBackButton(
-        chatId,
-        'ရွေးချယ်မှုမှ ထွက်ရန် နောက်သို့ ကို နှိပ်ပါ။',
-      );
-
-      await this.sessionService.setState(telegramId, 'WAITING_STOP_CHOICE');
-      await this.sessionService.setTempData(
-        telegramId,
-        stops.map((s) => ({
-          id: s.id,
-          name: s.name,
-          township: { name: s.township.name },
-        })),
-      );
-      return;
-    }
-
-    await this.showBusesForStop(chatId, telegramId, stops[0]);
+    await this.replyWithStopChoices(chatId, telegramId, text, stops);
   }
 
   async handleStopChoice(
@@ -116,11 +121,11 @@ export class TelegramHandler {
       return;
     }
 
-    const choice = Number(text);
-    if (!Number.isInteger(choice) || choice < 1 || choice > tempData.length) {
+    const choice = parseMyanmarNumber(text);
+    if (choice === null || choice < 1 || choice > tempData.length) {
       await this.keyboard.sendMessage(
         chatId,
-        `Please reply with a number between 1 and ${tempData.length}`,
+        `ကျေးဇူးပြု၍ 1 မှ ${tempData.length} အတွင်း နံပါတ်တစ်ခုဖြင့် ရွေးချယ်ပါ။`,
       );
       return;
     }
@@ -154,6 +159,68 @@ export class TelegramHandler {
       );
     }
 
+    await this.sessionService.setState(telegramId, 'IDLE');
+    await this.keyboard.showMainMenu(chatId);
+  }
+
+  private async replyWithStopChoices(
+    chatId: number,
+    telegramId: number,
+    text: string,
+    stops: Stop[],
+  ) {
+    if (stops.length > 1) {
+      const choices = stops
+        .map((s, i) => `${i + 1}. ${s.name} — ${s.township.name}`)
+        .join('\n');
+
+      await this.keyboard.sendMessage(
+        chatId,
+        `"${text}" အတွက် မှတ်တိုင် ${stops.length} ခု တွေ့ပါသည်:\n\n${choices}\n\nနံပါတ်ဖြင့် ရွေးချယ်ပါ (1, 2, ...)`,
+      );
+      await this.keyboard.sendMessageWithBackButton(
+        chatId,
+        'ရွေးချယ်မှုမှ ထွက်ရန် နောက်သို့ ကို နှိပ်ပါ။',
+      );
+
+      await this.sessionService.setState(telegramId, 'WAITING_STOP_CHOICE');
+      await this.sessionService.setTempData(
+        telegramId,
+        stops.map((s) => ({
+          id: s.id,
+          name: s.name,
+          township: { name: s.township.name },
+        })),
+      );
+      return;
+    }
+
+    await this.showBusesForStop(chatId, telegramId, stops[0]);
+  }
+
+  private async showBusesForTownship(
+    chatId: number,
+    telegramId: number,
+    township: { id: number; name: string },
+  ) {
+    const buses = await this.busService.getBusesByTownship(township.id);
+
+    if (buses.length === 0) {
+      await this.keyboard.sendMessage(
+        chatId,
+        `❌ ${township.name} မြို့နယ်သို့ ရောက်ရှိသော ယာဥ်လိုင်း မတွေ့ပါ။`,
+      );
+      return;
+    }
+
+    const busList = buses
+      .map((bus) => `• ယာဥ်လိုင်းနံပါတ် ${bus.number} — ${bus.description}`)
+      .join('\n');
+
+    await this.keyboard.sendMessage(
+      chatId,
+      `🏙️ ${township.name} မြို့နယ်သို့ ရောက်ရှိသော ယာဥ်လိုင်းများ:\n\n${busList}`,
+    );
     await this.sessionService.setState(telegramId, 'IDLE');
     await this.keyboard.showMainMenu(chatId);
   }

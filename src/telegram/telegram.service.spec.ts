@@ -64,6 +64,19 @@ describe('TelegramService', () => {
     expect(handler.handleStopNameInput).not.toHaveBeenCalled();
   });
 
+  it('routes Myanmar digit bus numbers to bus line search', async () => {
+    await service.handleUpdate({
+      message: {
+        text: '၄၃',
+        from: { id: 123 },
+        chat: { id: 456 },
+      },
+    });
+
+    expect(handler.handleBusNumberInput).toHaveBeenCalledWith(456, 123, '43');
+    expect(handler.handleStopNameInput).not.toHaveBeenCalled();
+  });
+
   it('routes typed strings to stop quick search', async () => {
     await service.handleUpdate({
       message: {

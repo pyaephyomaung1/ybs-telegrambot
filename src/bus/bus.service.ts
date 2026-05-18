@@ -11,6 +11,8 @@ import {
 import { BusLineStop } from '../entities/bus-line-stop.entity';
 import { Stop } from '../entities/stop.entity';
 import { Township } from '../entities/township.entity';
+import { BusLine } from '../entities/bus-line.entity';
+import { normalizeMyanmarDigits } from '../telegram/number.util';
 
 @Injectable()
 export class BusService {
@@ -45,15 +47,78 @@ export class BusService {
 
   // Search stops by name (partial match, case insensitive)
   searchStops(name: string): Promise<Stop[]> {
-    const normalizedName = name.toLocaleLowerCase();
+    const normalizedName = this.normalizeSearchText(name);
 
     const results = stops
       .filter((stop) =>
         [stop.name, stop.nameEn, stop.nameMm, stop.roadEn, stop.roadMm]
           .filter(Boolean)
-          .some((value) => value.toLocaleLowerCase().includes(normalizedName)),
+          .some((value) =>
+            this.normalizeSearchText(value).includes(normalizedName),
+          ),
       )
       .map((stop) => this.toStopEntity(stop));
+
+    return Promise.resolve(results);
+  }
+
+  searchExactStops(name: string): Promise<Stop[]> {
+    const normalizedName = this.normalizeSearchText(name);
+
+    const results = stops
+      .filter((stop) =>
+        [stop.name, stop.nameEn, stop.nameMm]
+          .filter(Boolean)
+          .some((value) => this.normalizeSearchText(value) === normalizedName),
+      )
+      .map((stop) => this.toStopEntity(stop));
+
+    return Promise.resolve(results);
+  }
+
+  searchTownships(name: string): Promise<Township[]> {
+    const normalizedName = this.normalizeSearchText(name);
+
+    const results = townships
+      .filter((township) =>
+        [township.name, township.nameEn]
+          .filter(Boolean)
+          .some((value) =>
+            this.normalizeSearchText(value).includes(normalizedName),
+          ),
+      )
+      .map((township) => ({
+        id: township.id,
+        name: township.name,
+        stops: [],
+      }));
+
+    return Promise.resolve(results);
+  }
+
+  getBusesByTownship(townshipId: number): Promise<BusLine[]> {
+    const stopIdsInTownship = new Set(
+      stops
+        .filter((stop) => stop.townshipId === townshipId)
+        .map((stop) => stop.id),
+    );
+    const busLineIds = new Set(
+      busLineStops
+        .filter((busLineStop) => stopIdsInTownship.has(busLineStop.stopId))
+        .map((busLineStop) => busLineStop.busLineId),
+    );
+
+    const results = busLines
+      .filter((busLine) => busLineIds.has(busLine.id))
+      .sort((a, b) =>
+        a.number.localeCompare(b.number, undefined, { numeric: true }),
+      )
+      .map((busLine) => ({
+        id: busLine.id,
+        number: busLine.number,
+        description: busLine.description,
+        busLineStops: [],
+      }));
 
     return Promise.resolve(results);
   }
@@ -112,5 +177,11 @@ export class BusService {
       } satisfies Township,
       busLineStops: [],
     };
+  }
+
+  private normalizeSearchText(text: string): string {
+    return normalizeMyanmarDigits(text)
+      .toLocaleLowerCase()
+      .replace(/[()[\]{}'"“”‘’၊။,\s-]+/g, '');
   }
 }
