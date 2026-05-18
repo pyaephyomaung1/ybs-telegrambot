@@ -140,7 +140,7 @@ export class TelegramService {
   }
 
   private isBusNumberInput(text: string): boolean {
-    return /^\d+$/.test(text);
+    return /^\d+[a-z]?$/i.test(text);
   }
 
   private isTelegramTextUpdate(body: unknown): body is TelegramTextUpdate {

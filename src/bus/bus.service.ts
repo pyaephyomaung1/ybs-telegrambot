@@ -16,12 +16,28 @@ import { Township } from '../entities/township.entity';
 export class BusService {
   // Search by bus number → return all stops in order
   getStopsByBusNumber(busNumber: string): Promise<BusLineStop[]> {
-    const busLine = busLines.find((line) => line.number === busNumber);
-    if (!busLine) return Promise.resolve([]);
+    const normalizedBusNumber = busNumber.toLocaleLowerCase();
+    const exactMatches = busLines.filter(
+      (line) => line.number.toLocaleLowerCase() === normalizedBusNumber,
+    );
+    const busLineMatches =
+      exactMatches.length > 0
+        ? exactMatches
+        : busLines.filter(
+            (line) =>
+              line.baseNumber.toLocaleLowerCase() === normalizedBusNumber,
+          );
+    if (busLineMatches.length === 0) return Promise.resolve([]);
+
+    const busLineIds = new Set(busLineMatches.map((line) => line.id));
 
     const results = busLineStops
-      .filter((busLineStop) => busLineStop.busLineId === busLine.id)
-      .sort((a, b) => a.stopOrder - b.stopOrder)
+      .filter((busLineStop) => busLineIds.has(busLineStop.busLineId))
+      .sort((a, b) =>
+        a.busLineId === b.busLineId
+          ? a.stopOrder - b.stopOrder
+          : a.busLineId - b.busLineId,
+      )
       .map((busLineStop) => this.toBusLineStopEntity(busLineStop));
 
     return Promise.resolve(results);
@@ -32,7 +48,11 @@ export class BusService {
     const normalizedName = name.toLocaleLowerCase();
 
     const results = stops
-      .filter((stop) => stop.name.toLocaleLowerCase().includes(normalizedName))
+      .filter((stop) =>
+        [stop.name, stop.nameEn, stop.nameMm, stop.roadEn, stop.roadMm]
+          .filter(Boolean)
+          .some((value) => value.toLocaleLowerCase().includes(normalizedName)),
+      )
       .map((stop) => this.toStopEntity(stop));
 
     return Promise.resolve(results);
