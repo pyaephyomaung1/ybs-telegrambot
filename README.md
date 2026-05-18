@@ -28,6 +28,22 @@ Built as a school project by **Pyae Phyo Maung**, with data entry support from *
 
 ---
 
+## Data Source
+
+YBS bus, stop, and route data used in this project is based on the public dataset from:
+
+**thantthet/YBS-Data**  
+https://github.com/thantthet/YBS-Data
+
+Data files used:
+
+- `data/stops.tsv` for YBS stop names, locations, roads, and townships
+- `data/routes/*.json` for bus route names and ordered stop lists
+
+Many thanks to the maintainers and contributors of `thantthet/YBS-Data` for making this data available.
+
+---
+
 ## Features
 
 - **Search by Bus Line** — Enter a bus number and get all stops in order
@@ -80,6 +96,8 @@ If the same stop name exists in multiple townships, the bot will ask you to choo
 
 | Role | Name |
 |---|---|
+| Project Developer | Pyae Phyo Maung |
 | Data Entry | Min Kaung Han, Aung Zay Ya |
+| Public YBS Dataset | [thantthet/YBS-Data](https://github.com/thantthet/YBS-Data) |
 
 ---
