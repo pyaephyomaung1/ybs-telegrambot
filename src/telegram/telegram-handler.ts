@@ -201,7 +201,7 @@ export class TelegramHandler {
 
       await this.keyboard.sendMessage(
         chatId,
-        `"${text}" အတွက် တွေ့သော ယာဥ်လိုင်းနံပါတ်များ:\n\n${choices}`,
+        `"${text}" အတွက် တွေ့သော ယာဥ်လိုင်းနံပါတ်များ...\n\n${choices}`,
       );
       await this.sessionService.setState(telegramId, 'IDLE');
       await this.keyboard.showMainMenu(chatId);
